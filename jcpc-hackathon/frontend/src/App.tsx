@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import { CoachDashboard } from './CoachDashboard';
+import { ADIHistoryChart } from './ADIHistoryChart';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -897,14 +899,15 @@ function App() {
                 <p className="metric-label">Novel problems without AI</p>
               </div>
             </div>
+
+            <div style={{ marginTop: '30px' }}>
+              <ADIHistoryChart studentId={studentId} days={30} />
+            </div>
           </div>
         )}
 
         {view === 'dashboard' && (
-          <div className="dashboard-view">
-            <h2>Coach Dashboard</h2>
-            <p>Dashboard view for coaches to monitor all students (implementation in progress)</p>
-      </div>
+          <CoachDashboard />
         )}
       </main>
     </div>
