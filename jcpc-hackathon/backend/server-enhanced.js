@@ -9,6 +9,7 @@ const http = require('http');
 const db = require('./database-facade');
 const authRoutes = require('./auth-routes');
 const codeRoutes = require('./code-routes');
+const behavioralRoutes = require('./behavioral-routes');
 const ws = require('./websocket-server');
 const executor = require('./code-executor');
 
@@ -142,6 +143,9 @@ app.use('/api/auth', authRoutes);
 
 // Code execution routes
 app.use('/api/code', codeRoutes);
+
+// Behavioral tracking routes
+app.use('/api/behavioral', behavioralRoutes);
 
 // Student Management
 app.get('/api/student/:id', async (req, res) => {

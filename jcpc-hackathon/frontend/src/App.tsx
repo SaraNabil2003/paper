@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import { CoachDashboard } from './CoachDashboard';
 import { ADIHistoryChart } from './ADIHistoryChart';
+import { ResearchConsent } from './components/ResearchConsent';
+import { useBehavioralTracking } from './hooks/useBehavioralTracking';
+import { usePlagiarismCheck } from './hooks/usePlagiarismCheck';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -52,8 +55,21 @@ function App() {
   const [testResults, setTestResults] = useState<any[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState('');
+  const [showPlagiarismWarning, setShowPlagiarismWarning] = useState(false);
+  const [plagiarismResult, setPlagiarismResult] = useState<any>(null);
 
   const studentId = 1; // Default student for demo
+
+  // Behavioral tracking hook
+  useBehavioralTracking({
+    userId: studentId,
+    sessionId: session?.studentId || null,
+    problemId: currentProblem?.id || null,
+    enabled: session !== null
+  });
+
+  // Plagiarism detection hook
+  const { checkPlagiarism, checking: plagiarismChecking } = usePlagiarismCheck();
 
   useEffect(() => {
     // Test backend connection first
@@ -413,7 +429,22 @@ function App() {
         });
         
         const attemptData = await attemptRes.json();
-        
+
+        // Run plagiarism check on successful submission
+        if (attemptData.attempt?.id) {
+          const plagiarismCheck = await checkPlagiarism(
+            studentId,
+            attemptData.attempt.id,
+            currentProblem.id,
+            code
+          );
+
+          if (plagiarismCheck.flagged) {
+            setPlagiarismResult(plagiarismCheck);
+            setShowPlagiarismWarning(true);
+          }
+        }
+
         // Check for mode progression
         if (attemptData.progression && attemptData.progression.shouldProgress) {
           const oldMode = attemptData.progression.currentMode;
@@ -422,7 +453,7 @@ function App() {
         } else {
           alert('🎉 Congratulations! All tests passed! You can mark this as solved.');
         }
-        
+
         // Update student data
         if (attemptData.updatedStudent) {
           setStudent(attemptData.updatedStudent);
@@ -1023,6 +1054,59 @@ function App() {
           <CoachDashboard />
         )}
       </main>
+
+      {/* Research Consent Component */}
+      <ResearchConsent
+        userId={studentId}
+        requireConsent={false}
+        onConsentComplete={(consented) => {
+          console.log('Research consent:', consented ? 'Given' : 'Declined');
+        }}
+      />
+
+      {/* Plagiarism Warning Modal */}
+      {showPlagiarismWarning && plagiarismResult && (
+        <div className="modal-overlay" onClick={() => setShowPlagiarismWarning(false)}>
+          <div className="modal-content plagiarism-warning" onClick={(e) => e.stopPropagation()}>
+            <h2>⚠️ Plagiarism Detection Alert</h2>
+            <p>
+              Our system has detected significant similarity between your code and other sources
+              (similarity score: {(plagiarismResult.similarityScore * 100).toFixed(1)}%).
+            </p>
+
+            {plagiarismResult.matches && plagiarismResult.matches.length > 0 && (
+              <div className="plagiarism-matches">
+                <h3>Detected Matches:</h3>
+                <ul>
+                  {plagiarismResult.matches.map((match: any, idx: number) => (
+                    <li key={idx}>
+                      {match.type === 'student_similarity' && (
+                        <>Similar to code from another student (similarity: {(match.similarity * 100).toFixed(1)}%)</>
+                      )}
+                      {match.type === 'ai_response_similarity' && (
+                        <>Similar to AI-generated code from your chat history (similarity: {(match.similarity * 100).toFixed(1)}%)</>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <p className="plagiarism-note">
+              <strong>Important:</strong> This detection is for research and learning purposes.
+              While your submission has been recorded, please ensure you're writing original code
+              and truly understanding the solutions.
+            </p>
+
+            <button
+              className="btn-primary"
+              onClick={() => setShowPlagiarismWarning(false)}
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
