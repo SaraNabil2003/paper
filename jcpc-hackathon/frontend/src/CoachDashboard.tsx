@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './CoachDashboard.css';
+import { BehavioralAnalytics } from './components/BehavioralAnalytics';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -418,6 +419,12 @@ export function CoachDashboard() {
                       )}
                     </div>
                   )}
+
+                  {/* Behavioral Analytics */}
+                  <div className="behavioral-section">
+                    <h3>Behavioral Analytics & Plagiarism Detection</h3>
+                    <BehavioralAnalytics studentId={selectedStudent.id} />
+                  </div>
                 </div>
               ) : (
                 <div>Loading analytics...</div>
@@ -461,6 +468,12 @@ export function CoachDashboard() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* All Plagiarism Cases */}
+      <div className="all-plagiarism-section">
+        <h2>Plagiarism Detection Overview</h2>
+        <BehavioralAnalytics />
       </div>
     </div>
   );
