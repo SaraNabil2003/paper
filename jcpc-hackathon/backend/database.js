@@ -1,36 +1,36 @@
 // Progressive Scaffolding Framework Database
 let database = {
   students: [
-    { 
-      id: 1, 
-      name: "Sarah Chen", 
+    {
+      id: 1,
+      name: "Sarah Chen",
       email: "sarah@university.edu",
       codeforcesRating: 1350,
       currentMode: 2, // 1=Hint, 2=Conceptual, 3=Minimal
-      adi: 3.2,
-      performanceWithAI: 0.85,
-      performanceWithoutAI: 0.72,
-      consultationFrequency: 0.3, // normalized [0,1]
-      earlyConsultationRatio: 0.15, // % consultations < 10min
-      transferPerformance: 0.68, // success on novel problems without AI
+      adi: 0, // Will calculate from real interactions
+      performanceWithAI: 0, // Will calculate from attempts
+      performanceWithoutAI: 0, // Will calculate from attempts
+      consultationFrequency: 0, // Will calculate from AI interactions
+      earlyConsultationRatio: 0, // Will calculate from AI interactions
+      transferPerformance: 0, // Will calculate from non-AI attempts
       attempts: [],
       aiInteractions: [],
       reflections: [],
       modeHistory: [],
       sessions: []
     },
-    { 
-      id: 2, 
-      name: "Ahmed Hassan", 
+    {
+      id: 2,
+      name: "Ahmed Hassan",
       email: "ahmed@university.edu",
       codeforcesRating: 1100,
       currentMode: 1,
-      adi: 6.8,
-      performanceWithAI: 0.90,
-      performanceWithoutAI: 0.25,
-      consultationFrequency: 0.85,
-      earlyConsultationRatio: 0.70,
-      transferPerformance: 0.20,
+      adi: 0, // Will calculate from real interactions
+      performanceWithAI: 0, // Will calculate from attempts
+      performanceWithoutAI: 0, // Will calculate from attempts
+      consultationFrequency: 0, // Will calculate from AI interactions
+      earlyConsultationRatio: 0, // Will calculate from AI interactions
+      transferPerformance: 0, // Will calculate from non-AI attempts
       attempts: [],
       aiInteractions: [],
       reflections: [],
@@ -128,20 +128,21 @@ module.exports = {
     return reflectionData;
   },
   
-  startSession: (studentId, problemId) => {
+  startSession: (studentId, problemId, aiAvailable = true) => {
     const session = {
       studentId,
       problemId,
       startTime: Date.now(),
+      aiAvailable, // NEW: Whether student chose to have AI available
       aiRequested: false,
       aiAccessGranted: false,
       submissionAttempts: 0,
       struggleTime: 0,
       paused: false
     };
-    
+
     database.currentSessions[studentId] = session;
-    
+
     const student = database.students.find(s => s.id === studentId);
     if (student) {
       student.sessions.push({
@@ -149,7 +150,7 @@ module.exports = {
         endTime: null
       });
     }
-    
+
     return session;
   },
   

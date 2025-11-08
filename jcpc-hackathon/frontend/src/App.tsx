@@ -26,6 +26,7 @@ interface Session {
   studentId: number;
   problemId: number;
   startTime: number;
+  aiAvailable: boolean;
   aiRequested: boolean;
   aiAccessGranted: boolean;
   submissionAttempts: number;
@@ -36,6 +37,8 @@ function App() {
   const [student, setStudent] = useState<Student | null>(null);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null);
+  const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
+  const [showAiModeSelection, setShowAiModeSelection] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
@@ -132,20 +135,24 @@ function App() {
     }
   };
 
-  const startProblem = async (problemId: number) => {
-    console.log('Starting problem:', problemId);
+  const startProblem = async (problemId: number, aiAvailable: boolean) => {
+    console.log('Starting problem:', problemId, 'with AI available:', aiAvailable);
     console.log('Student ID:', studentId);
     console.log('Problem ID:', problemId);
-    
+
     if (!studentId || !problemId) {
       alert(`Missing required data: studentId=${studentId}, problemId=${problemId}`);
       return;
     }
-    
+
     try {
-      const requestBody = { studentId: Number(studentId), problemId: Number(problemId) };
+      const requestBody = {
+        studentId: Number(studentId),
+        problemId: Number(problemId),
+        aiAvailable: aiAvailable
+      };
       console.log('Request body:', requestBody);
-      
+
       const res = await fetch(`${API_BASE}/session/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,6 +207,8 @@ function App() {
       setOutput('');
       setView('problem');
       setShowReflection('pre-solving');
+      setShowAiModeSelection(false);
+      setSelectedProblem(null);
     } catch (error) {
       console.error('Failed to start session:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -533,7 +542,85 @@ function App() {
   };
 
   const minStruggleTime = currentProblem?.difficulty === 'Easy' ? 900 : 1800; // 15 or 30 minutes
-  const canRequestAI = session && timeElapsed >= minStruggleTime && (session.submissionAttempts || 0) > 0;
+  const canRequestAI = session && session.aiAvailable && timeElapsed >= minStruggleTime && (session.submissionAttempts || 0) > 0;
+
+  if (showAiModeSelection && selectedProblem) {
+    return (
+      <div className="reflection-modal">
+        <div className="reflection-content">
+          <h2>Choose AI Assistance Mode</h2>
+          <p style={{ marginBottom: '1.5rem', color: '#666' }}>
+            Select how you want to practice this problem:
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <button
+              onClick={() => startProblem(selectedProblem.id, false)}
+              className="btn-primary"
+              style={{
+                padding: '1.5rem',
+                textAlign: 'left',
+                background: '#28a745',
+                border: 'none'
+              }}
+            >
+              <div style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                🎯 Practice WITHOUT AI (Recommended)
+              </div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                Build independence and reduce your AI Dependency Index. Best for improving transfer performance on novel problems.
+              </div>
+            </button>
+
+            <button
+              onClick={() => startProblem(selectedProblem.id, true)}
+              className="btn-secondary"
+              style={{
+                padding: '1.5rem',
+                textAlign: 'left',
+                background: '#667eea',
+                border: 'none',
+                color: 'white'
+              }}
+            >
+              <div style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                🤖 Practice WITH AI Available
+              </div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                AI assistance available after struggle time. Use when learning new concepts or stuck on challenging problems.
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setShowAiModeSelection(false);
+                setSelectedProblem(null);
+              }}
+              className="btn-secondary"
+              style={{ marginTop: '0.5rem' }}
+            >
+              Cancel
+            </button>
+          </div>
+
+          {student && student.adi > 5 && (
+            <div style={{
+              marginTop: '1.5rem',
+              padding: '1rem',
+              background: '#fff3cd',
+              borderRadius: '4px',
+              border: '1px solid #ffc107'
+            }}>
+              <strong>⚠️ High AI Dependency Detected</strong>
+              <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                Your ADI is {student.adi.toFixed(1)}. Consider practicing WITHOUT AI to build independence and lower your dependency score.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (showReflection) {
     const prompts = {
@@ -668,14 +755,15 @@ function App() {
                     </div>
                   ) : (
                     problems.map(problem => (
-                      <div 
-                        key={problem.id} 
-                        className="problem-card" 
+                      <div
+                        key={problem.id}
+                        className="problem-card"
                         onClick={(e) => {
                           console.log('Problem card clicked:', problem.id, problem.title);
                           e.preventDefault();
                           e.stopPropagation();
-                          startProblem(problem.id);
+                          setSelectedProblem(problem);
+                          setShowAiModeSelection(true);
                         }}
                         onMouseDown={(e) => {
                           console.log('Mouse down on problem card:', problem.id);
@@ -687,10 +775,11 @@ function App() {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             console.log('Keyboard activation:', problem.id);
-                            startProblem(problem.id);
+                            setSelectedProblem(problem);
+                            setShowAiModeSelection(true);
                           }
                         }}
-                        style={{ 
+                        style={{
                           cursor: 'pointer',
                           pointerEvents: 'auto'
                         }}
@@ -716,6 +805,18 @@ function App() {
                     <span className={`difficulty-badge difficulty-${currentProblem.difficulty.toLowerCase()}`}>
                       {currentProblem.difficulty}
                     </span>
+                    {session && (
+                      <span style={{
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '12px',
+                        fontSize: '0.85rem',
+                        fontWeight: 'bold',
+                        background: session.aiAvailable ? '#667eea' : '#28a745',
+                        color: 'white'
+                      }}>
+                        {session.aiAvailable ? '🤖 AI Available' : '🎯 AI-Free'}
+                      </span>
+                    )}
                     <span className="timer">⏱️ {formatTime(timeElapsed)}</span>
                   </div>
                 </div>
@@ -801,7 +902,19 @@ function App() {
 
                 <div className="ai-assistance">
                   <h3>AI Assistance</h3>
-                  {!canRequestAI && (
+                  {session && !session.aiAvailable ? (
+                    <div className="ai-restriction" style={{
+                      background: '#d4edda',
+                      border: '1px solid #c3e6cb',
+                      borderRadius: '4px',
+                      padding: '1rem'
+                    }}>
+                      <p style={{ margin: 0 }}>
+                        🎯 <strong>AI-Free Practice Mode</strong><br/>
+                        You chose to solve this problem without AI assistance to build independence and reduce your AI Dependency Index. Keep going!
+                      </p>
+                    </div>
+                  ) : !canRequestAI ? (
                     <div className="ai-restriction">
                       {timeElapsed < minStruggleTime && (
                         <p>⏳ You must work on this problem for at least {Math.floor(minStruggleTime / 60)} minutes before requesting AI help.</p>
@@ -810,7 +923,7 @@ function App() {
                         <p>📝 You must submit at least one solution attempt before requesting AI help.</p>
                       )}
                     </div>
-                  )}
+                  ) : null}
                   
                   {canRequestAI && !session?.aiRequested && (
                     <div className="ai-request">
