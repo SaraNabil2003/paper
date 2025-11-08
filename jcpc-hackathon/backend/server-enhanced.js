@@ -175,7 +175,7 @@ app.get('/api/problems/:id/tests', async (req, res) => {
 // Session Management
 app.post('/api/session/start', async (req, res) => {
   try {
-    const { studentId, problemId } = req.body;
+    const { studentId, problemId, aiAvailable } = req.body;
 
     if (studentId === undefined || problemId === undefined) {
       return res.status(400).json({
@@ -183,7 +183,12 @@ app.post('/api/session/start', async (req, res) => {
       });
     }
 
-    const session = await db.startSession(parseInt(studentId), parseInt(problemId));
+    // aiAvailable defaults to true if not specified (backward compatibility)
+    const session = await db.startSession(
+      parseInt(studentId),
+      parseInt(problemId),
+      aiAvailable !== undefined ? aiAvailable : true
+    );
 
     if (!session) {
       return res.status(500).json({ error: 'Failed to create session' });
@@ -229,6 +234,14 @@ app.post('/api/ai/request', async (req, res) => {
   const session = await db.getSession(parseInt(studentId));
   if (!session) {
     return res.status(400).json({ error: 'No active session' });
+  }
+
+  // Check if AI is available for this session
+  if (session.aiAvailable === false) {
+    return res.status(403).json({
+      error: 'AI not available',
+      message: 'You chose to solve this problem without AI assistance to build independence and reduce your AI Dependency Index.'
+    });
   }
 
   // Struggle-first protocol
@@ -296,12 +309,21 @@ app.post('/api/ai/request', async (req, res) => {
 app.post('/api/attempt', async (req, res) => {
   const { studentId, problemId, success, withAI, timeSpent } = req.body;
 
+  // Determine actual withAI value based on session
+  let actualWithAI = withAI === true;
+  const session = await db.getSession(parseInt(studentId));
+
+  // If session exists and AI was not available, force withAI to false
+  if (session && session.aiAvailable === false) {
+    actualWithAI = false;
+  }
+
   const attempt = await db.recordAttempt(parseInt(studentId), {
     problemId: parseInt(problemId),
     success: success === true,
-    withAI: withAI === true,
+    withAI: actualWithAI,
     timeSpent: parseInt(timeSpent) || 0,
-    mode: withAI ? (await db.getStudent(parseInt(studentId)))?.currentMode : null
+    mode: actualWithAI ? (await db.getStudent(parseInt(studentId)))?.currentMode : null
   });
 
   const progression = await db.checkModeProgression(parseInt(studentId));
