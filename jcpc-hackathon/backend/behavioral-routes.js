@@ -1,7 +1,22 @@
 // API Routes for Behavioral Tracking
 const express = require('express');
 const router = express.Router();
-const behavioral = require('./behavioral-tracking');
+
+// Try to use PostgreSQL version, fallback to in-memory
+let behavioral;
+try {
+  const dbFacade = require('./database-facade');
+  if (dbFacade.isUsingPostgres && dbFacade.isUsingPostgres()) {
+    behavioral = require('./behavioral-tracking');
+    console.log('✅ Using PostgreSQL for behavioral tracking');
+  } else {
+    behavioral = require('./behavioral-tracking-memory');
+    console.log('⚠️  Using in-memory storage for behavioral tracking (data won\'t persist)');
+  }
+} catch (error) {
+  behavioral = require('./behavioral-tracking-memory');
+  console.log('⚠️  Using in-memory storage for behavioral tracking (data won\'t persist)');
+}
 
 /**
  * POST /api/behavioral/event
