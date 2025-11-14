@@ -621,6 +621,9 @@ function App() {
     );
   }
 
+  // Always show clear storage button for debugging
+  const clearStorageButton = <ClearStorage />;
+
   // Reduced struggle time for demo: 1 minute for Easy, 2 minutes for others
   const minStruggleTime = currentProblem?.difficulty === 'Easy' ? 60 : 120;
   const canRequestAI = session && session.aiAvailable && timeElapsed >= minStruggleTime && (session.submissionAttempts || 0) > 0;
@@ -1234,6 +1237,9 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Clear Storage Button (for debugging) */}
+      {clearStorageButton}
     </div>
   );
 }
