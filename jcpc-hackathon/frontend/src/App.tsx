@@ -813,12 +813,14 @@ function App() {
             </button>
           </>
         )}
-        <button
-          onClick={() => setView('dashboard')}
-          className={view === 'dashboard' ? 'active' : ''}
-        >
-          {user.role === 'teacher' ? 'Dashboard' : 'Coach Dashboard'}
-        </button>
+        {user.role === 'teacher' && (
+          <button
+            onClick={() => setView('dashboard')}
+            className={view === 'dashboard' ? 'active' : ''}
+          >
+            Coach Dashboard
+          </button>
+        )}
       </nav>
 
       <main className="app-main">
