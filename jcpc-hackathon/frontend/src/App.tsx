@@ -6,6 +6,7 @@ import { ResearchConsent } from './components/ResearchConsent';
 import { useBehavioralTracking } from './hooks/useBehavioralTracking';
 import { usePlagiarismCheck } from './hooks/usePlagiarismCheck';
 import { Login } from './Login';
+import { ClearStorage } from './ClearStorage';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -611,7 +612,12 @@ function App() {
 
   // Show login page if not authenticated
   if (!user) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <>
+        <Login onLoginSuccess={handleLoginSuccess} />
+        <ClearStorage />
+      </>
+    );
   }
 
   // Reduced struggle time for demo: 1 minute for Easy, 2 minutes for others
