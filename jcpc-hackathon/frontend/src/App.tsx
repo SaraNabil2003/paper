@@ -83,14 +83,15 @@ function App() {
   // Plagiarism detection hook
   const { checkPlagiarism, checking: plagiarismChecking } = usePlagiarismCheck();
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-    }
-  }, []);
+  // Auto-login disabled - always show login page first
+  // useEffect(() => {
+  //   // Check if user is already logged in
+  //   const savedUser = localStorage.getItem('user');
+  //   if (savedUser) {
+  //     const parsedUser = JSON.parse(savedUser);
+  //     setUser(parsedUser);
+  //   }
+  // }, []);
 
   useEffect(() => {
     if (user) {
