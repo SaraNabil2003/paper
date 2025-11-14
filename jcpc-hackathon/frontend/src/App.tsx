@@ -83,14 +83,15 @@ function App() {
   // Plagiarism detection hook
   const { checkPlagiarism, checking: plagiarismChecking } = usePlagiarismCheck();
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-    }
-  }, []);
+  // Auto-login disabled - always show login page first
+  // useEffect(() => {
+  //   // Check if user is already logged in
+  //   const savedUser = localStorage.getItem('user');
+  //   if (savedUser) {
+  //     const parsedUser = JSON.parse(savedUser);
+  //     setUser(parsedUser);
+  //   }
+  // }, []);
 
   useEffect(() => {
     if (user) {
@@ -619,6 +620,9 @@ function App() {
       </>
     );
   }
+
+  // Always show clear storage button for debugging
+  const clearStorageButton = <ClearStorage />;
 
   // Reduced struggle time for demo: 1 minute for Easy, 2 minutes for others
   const minStruggleTime = currentProblem?.difficulty === 'Easy' ? 60 : 120;
@@ -1233,6 +1237,9 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Clear Storage Button (for debugging) */}
+      {clearStorageButton}
     </div>
   );
 }
