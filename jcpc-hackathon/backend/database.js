@@ -1,5 +1,28 @@
 // Progressive Scaffolding Framework Database
 let database = {
+  users: [
+    {
+      id: 1,
+      name: "Sarah Chen",
+      email: "sarah@university.edu",
+      password: "password",
+      role: "student"
+    },
+    {
+      id: 2,
+      name: "Ahmed Hassan",
+      email: "ahmed@university.edu",
+      password: "password",
+      role: "student"
+    },
+    {
+      id: 3,
+      name: "Dr. Johnson",
+      email: "teacher@university.edu",
+      password: "password",
+      role: "teacher"
+    }
+  ],
   students: [
     {
       id: 1,
@@ -60,6 +83,41 @@ let database = {
 };
 
 module.exports = {
+  // User management
+  getUserByEmail: (email) => database.users.find(u => u.email === email),
+  createUser: (userData) => {
+    const newUser = {
+      id: database.users.length + 1,
+      ...userData
+    };
+    database.users.push(newUser);
+
+    // If role is student, also create a student record
+    if (userData.role === 'student') {
+      const newStudent = {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        codeforcesRating: 1200,
+        currentMode: 1,
+        adi: 0,
+        performanceWithAI: 0,
+        performanceWithoutAI: 0,
+        consultationFrequency: 0,
+        earlyConsultationRatio: 0,
+        transferPerformance: 0,
+        attempts: [],
+        aiInteractions: [],
+        reflections: [],
+        modeHistory: [],
+        sessions: []
+      };
+      database.students.push(newStudent);
+    }
+
+    return newUser;
+  },
+
   getStudents: () => database.students,
   getStudent: (id) => database.students.find(s => s.id === id),
   getProblems: () => database.problems,

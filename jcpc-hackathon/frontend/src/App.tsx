@@ -5,8 +5,16 @@ import { ADIHistoryChart } from './ADIHistoryChart';
 import { ResearchConsent } from './components/ResearchConsent';
 import { useBehavioralTracking } from './hooks/useBehavioralTracking';
 import { usePlagiarismCheck } from './hooks/usePlagiarismCheck';
+import { Login } from './Login';
 
 const API_BASE = 'http://localhost:5000/api';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'student' | 'teacher';
+}
 
 interface Student {
   id: number;
@@ -37,6 +45,7 @@ interface Session {
 }
 
 function App() {
+  const [user, setUser] = useState<User | null>(null);
   const [student, setStudent] = useState<Student | null>(null);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null);
@@ -49,7 +58,9 @@ function App() {
   const [userQuery, setUserQuery] = useState('');
   const [showReflection, setShowReflection] = useState<string | null>(null);
   const [reflectionContent, setReflectionContent] = useState('');
-  const [view, setView] = useState<'problem' | 'dashboard' | 'analytics'>('problem');
+  const [view, setView] = useState<'problem' | 'dashboard' | 'analytics'>(
+    user?.role === 'teacher' ? 'dashboard' : 'problem'
+  );
   const [analytics, setAnalytics] = useState<any>(null);
   const [code, setCode] = useState('// Write your solution here\nfunction solve(input) {\n  // Your code here\n  return null;\n}');
   const [testResults, setTestResults] = useState<any[]>([]);
@@ -58,7 +69,7 @@ function App() {
   const [showPlagiarismWarning, setShowPlagiarismWarning] = useState(false);
   const [plagiarismResult, setPlagiarismResult] = useState<any>(null);
 
-  const studentId = 1; // Default student for demo
+  const studentId = user?.id || 1; // Use logged in user ID or default
 
   // Behavioral tracking hook
   useBehavioralTracking({
@@ -72,11 +83,24 @@ function App() {
   const { checkPlagiarism, checking: plagiarismChecking } = usePlagiarismCheck();
 
   useEffect(() => {
-    // Test backend connection first
-    testBackendConnection();
-    loadStudent();
-    loadProblems();
+    // Check if user is already logged in
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+    }
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      // Test backend connection first
+      testBackendConnection();
+      if (user.role === 'student') {
+        loadStudent();
+      }
+      loadProblems();
+    }
+  }, [user]);
 
   const testBackendConnection = async () => {
     try {
@@ -572,7 +596,26 @@ function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const minStruggleTime = currentProblem?.difficulty === 'Easy' ? 900 : 1800; // 15 or 30 minutes
+  const handleLoginSuccess = (loggedInUser: User) => {
+    setUser(loggedInUser);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    setStudent(null);
+    setSession(null);
+    setCurrentProblem(null);
+  };
+
+  // Show login page if not authenticated
+  if (!user) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Reduced struggle time for demo: 1 minute for Easy, 2 minutes for others
+  const minStruggleTime = currentProblem?.difficulty === 'Easy' ? 60 : 120;
   const canRequestAI = session && session.aiAvailable && timeElapsed >= minStruggleTime && (session.submissionAttempts || 0) > 0;
 
   if (showAiModeSelection && selectedProblem) {
@@ -712,6 +755,9 @@ function App() {
       <header className="app-header">
         <h1>Progressive Scaffolding Framework (PSF)</h1>
         <div className="header-info">
+          <span style={{ marginRight: '15px', color: '#666' }}>
+            {user.name} ({user.role})
+          </span>
           {student && (
             <>
               <span className={`mode-badge mode-${student.currentMode}`}>
@@ -722,27 +768,46 @@ function App() {
               </span>
             </>
           )}
+          <button
+            onClick={handleLogout}
+            style={{
+              marginLeft: '15px',
+              padding: '6px 12px',
+              background: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.9rem'
+            }}
+          >
+            Logout
+          </button>
         </div>
       </header>
 
       <nav className="app-nav">
-        <button 
-          onClick={() => setView('problem')} 
-          className={view === 'problem' ? 'active' : ''}
-        >
-          Problem Solving
-        </button>
-        <button 
-          onClick={() => { setView('analytics'); loadAnalytics(); }} 
-          className={view === 'analytics' ? 'active' : ''}
-        >
-          My Analytics
-        </button>
-        <button 
-          onClick={() => setView('dashboard')} 
+        {user.role === 'student' && (
+          <>
+            <button
+              onClick={() => setView('problem')}
+              className={view === 'problem' ? 'active' : ''}
+            >
+              Problem Solving
+            </button>
+            <button
+              onClick={() => { setView('analytics'); loadAnalytics(); }}
+              className={view === 'analytics' ? 'active' : ''}
+            >
+              My Analytics
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => setView('dashboard')}
           className={view === 'dashboard' ? 'active' : ''}
         >
-          Coach Dashboard
+          {user.role === 'teacher' ? 'Dashboard' : 'Coach Dashboard'}
         </button>
       </nav>
 
@@ -931,8 +996,14 @@ function App() {
                   </button>
                 </div>
 
-                <div className="ai-assistance">
-                  <h3>AI Assistance</h3>
+                <div className="ai-assistance" style={{
+                  background: '#f8f9fa',
+                  border: '2px solid #667eea',
+                  borderRadius: '8px',
+                  padding: '1.5rem',
+                  marginTop: '20px'
+                }}>
+                  <h3 style={{ marginTop: 0, color: '#667eea' }}>🤖 AI Assistance - Solve with AI</h3>
                   {session && !session.aiAvailable ? (
                     <div className="ai-restriction" style={{
                       background: '#d4edda',
@@ -946,31 +1017,80 @@ function App() {
                       </p>
                     </div>
                   ) : !canRequestAI ? (
-                    <div className="ai-restriction">
-                      {timeElapsed < minStruggleTime && (
-                        <p>⏳ You must work on this problem for at least {Math.floor(minStruggleTime / 60)} minutes before requesting AI help.</p>
-                      )}
-                      {(session?.submissionAttempts || 0) === 0 && (
-                        <p>📝 You must submit at least one solution attempt before requesting AI help.</p>
+                    <div className="ai-restriction" style={{
+                      background: '#fff3cd',
+                      border: '1px solid #ffc107',
+                      borderRadius: '4px',
+                      padding: '1rem'
+                    }}>
+                      <p style={{ marginBottom: '10px', fontWeight: 'bold' }}>
+                        AI Help Requirements (Struggle-First Protocol):
+                      </p>
+                      <ul style={{ marginLeft: '20px', marginBottom: '10px' }}>
+                        <li style={{ color: timeElapsed >= minStruggleTime ? 'green' : 'orange' }}>
+                          {timeElapsed >= minStruggleTime ? '✓' : '⏳'}
+                          {' '}Work for {Math.floor(minStruggleTime / 60)} minute(s)
+                          {timeElapsed < minStruggleTime && ` (${Math.floor((minStruggleTime - timeElapsed) / 60)}m ${(minStruggleTime - timeElapsed) % 60}s remaining)`}
+                        </li>
+                        <li style={{ color: (session?.submissionAttempts || 0) > 0 ? 'green' : 'orange' }}>
+                          {(session?.submissionAttempts || 0) > 0 ? '✓' : '📝'}
+                          {' '}Submit at least one solution attempt
+                          {(session?.submissionAttempts || 0) === 0 && ' (Required)'}
+                        </li>
+                      </ul>
+                      {student && student.adi > 7.5 && (
+                        <p style={{ color: '#dc3545', marginTop: '10px', fontWeight: 'bold' }}>
+                          ⚠️ Your ADI is too high ({student.adi.toFixed(1)}). Complete some AI-free problems first.
+                        </p>
                       )}
                     </div>
                   ) : null}
                   
                   {canRequestAI && !session?.aiRequested && (
-                    <div className="ai-request">
+                    <div className="ai-request" style={{
+                      background: 'white',
+                      border: '1px solid #667eea',
+                      borderRadius: '4px',
+                      padding: '1rem'
+                    }}>
+                      <p style={{ marginTop: 0, fontWeight: 'bold', color: '#28a745' }}>
+                        ✓ You can now request AI assistance!
+                      </p>
+                      <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
+                        Current Mode: <strong>{getModeName(student?.currentMode || 1)}</strong>
+                      </p>
                       <textarea
                         value={userQuery}
                         onChange={(e) => setUserQuery(e.target.value)}
-                        placeholder="Ask a question or request help..."
+                        placeholder="Ask a question or describe what you need help with..."
                         rows={3}
                         className="ai-query-input"
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd',
+                          marginBottom: '10px',
+                          fontSize: '1rem'
+                        }}
                       />
-                      <button 
-                        onClick={requestAIHelp} 
+                      <button
+                        onClick={requestAIHelp}
                         className="btn-primary"
                         disabled={aiRequesting}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          fontSize: '1.1rem',
+                          fontWeight: 'bold',
+                          background: '#667eea',
+                          border: 'none',
+                          borderRadius: '4px',
+                          color: 'white',
+                          cursor: aiRequesting ? 'not-allowed' : 'pointer'
+                        }}
                       >
-                        {aiRequesting ? 'Requesting...' : `Request AI Help (${getModeName(student?.currentMode || 1)})`}
+                        {aiRequesting ? '🔄 Requesting...' : `🤖 Get AI Help (${getModeName(student?.currentMode || 1)} Mode)`}
         </button>
                     </div>
                   )}
