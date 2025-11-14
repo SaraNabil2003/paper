@@ -1,9 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const db = require('./database');
 
 const app = express();
 app.use(cors());
+
+// JWT Secret - In production, use environment variable
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Body parsing middleware (must come before routes)
 app.use(express.json({ limit: '10mb' }));
@@ -22,6 +26,124 @@ app.use((req, res, next) => {
     console.log('===================');
   }
   next();
+});
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    // Allow unauthenticated access for demo purposes
+    // In production, uncomment the next line
+    // return res.status(401).json({ error: 'Access token required' });
+    return next();
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid token' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Authentication routes
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name, role } = req.body;
+
+    if (!email || !password || !name || !role) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (!['student', 'teacher'].includes(role)) {
+      return res.status(400).json({ error: 'Role must be student or teacher' });
+    }
+
+    // Check if user already exists
+    const existingUser = db.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+
+    // Create user
+    const user = db.createUser({ email, password, name, role });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password, role } = req.body;
+
+    if (!email || !password || !role) {
+      return res.status(400).json({ error: 'Email, password, and role are required' });
+    }
+
+    // Find user
+    const user = db.getUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check role
+    if (user.role !== role) {
+      return res.status(401).json({ error: `This account is not registered as a ${role}` });
+    }
+
+    // Verify password (in production, use bcrypt)
+    if (user.password !== password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Logout (client-side token removal, but we can add token blacklisting if needed)
+app.post('/api/auth/logout', (req, res) => {
+  res.json({ success: true, message: 'Logged out successfully' });
 });
 
 // OpenAI API integration (requires OPENAI_API_KEY environment variable)
