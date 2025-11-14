@@ -59,9 +59,7 @@ function App() {
   const [userQuery, setUserQuery] = useState('');
   const [showReflection, setShowReflection] = useState<string | null>(null);
   const [reflectionContent, setReflectionContent] = useState('');
-  const [view, setView] = useState<'problem' | 'dashboard' | 'analytics'>(
-    user?.role === 'teacher' ? 'dashboard' : 'problem'
-  );
+  const [view, setView] = useState<'problem' | 'dashboard' | 'analytics'>('problem');
   const [analytics, setAnalytics] = useState<any>(null);
   const [code, setCode] = useState('// Write your solution here\nfunction solve(input) {\n  // Your code here\n  return null;\n}');
   const [testResults, setTestResults] = useState<any[]>([]);
@@ -95,6 +93,9 @@ function App() {
 
   useEffect(() => {
     if (user) {
+      // Set initial view based on user role
+      setView(user.role === 'teacher' ? 'dashboard' : 'problem');
+
       // Test backend connection first
       testBackendConnection();
       if (user.role === 'student') {
@@ -1182,7 +1183,7 @@ function App() {
           </div>
         )}
 
-        {view === 'dashboard' && (
+        {view === 'dashboard' && user.role === 'teacher' && (
           <CoachDashboard />
         )}
       </main>
